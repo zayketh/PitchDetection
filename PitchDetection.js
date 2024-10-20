@@ -3,7 +3,10 @@ var noteTxt = document.getElementById("noteElement");
 var analyser;
 var audioContext = null;
 var CANVAS = null;
+var waveCanvas = null;
 var array = null;
+var buflen = 2048;
+var buf = new Float32Array(buflen);
 
 // Add this at the beginning of the file, after the variable declarations
 var startButton = document.getElementById("startButton");
@@ -13,6 +16,7 @@ var isRecording = false;
 var testDuration = 5; // Test duration in seconds
 var testStartTime;
 var pitchSamples = [];
+var filteredSamples = []; // To store valid samples for averaging
 
 // Add this function to start/stop recording
 function toggleRecording() {
@@ -22,32 +26,27 @@ function toggleRecording() {
         startButton.textContent = "Testing...";
         document.getElementById("status").textContent = "Recording...";
         document.getElementById("countdown").textContent = testDuration;
-        // Start the audio context if it's not running
+
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
-        
-        // Remove this line as we're not using volume bars anymore
-        // instantiatePids(100, 1);
-        
+
         testStartTime = Date.now();
         pitchSamples = [];
-        
-        // Clear the initial text in the frequency display
+        filteredSamples = []; // Reset filtered samples for this recording session
+
         document.getElementById("frequencyDisplay").innerHTML = '<canvas id="waveform" width="800" height="200"></canvas>';
-        
-        // Reinitialize the canvas after clearing the frequency display
+
         CANVAS = document.getElementById("waveform");
         if (CANVAS) {
             waveCanvas = CANVAS.getContext("2d");
         }
-        
-        // Start the countdown
-        var countdownInterval = setInterval(function() {
+
+        var countdownInterval = setInterval(function () {
             var elapsedTime = Math.floor((Date.now() - testStartTime) / 1000);
             var remainingTime = testDuration - elapsedTime;
             document.getElementById("countdown").textContent = remainingTime;
-            
+
             if (remainingTime <= 0) {
                 clearInterval(countdownInterval);
                 endRecording();
@@ -56,11 +55,10 @@ function toggleRecording() {
     }
 }
 
-// Add this function to create and show the result pop-up
 function showResultPopup(result, averagePitch) {
     const popup = document.createElement('div');
     popup.className = 'result-popup';
-    
+
     const resultText = document.createElement('p');
     resultText.textContent = `Result: ${result}`;
     popup.appendChild(resultText);
@@ -72,7 +70,7 @@ function showResultPopup(result, averagePitch) {
     const shareButton = document.createElement('button');
     shareButton.textContent = 'Share on X';
     shareButton.className = 'share-button';
-    shareButton.onclick = function() {
+    shareButton.onclick = function () {
         const tweetText = encodeURIComponent(`My voice test result: ${result} (${Math.round(averagePitch)} Hz) - Test your voice at [Your Website URL]`);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
     };
@@ -81,7 +79,7 @@ function showResultPopup(result, averagePitch) {
     const closeButton = document.createElement('button');
     closeButton.textContent = 'Close';
     closeButton.className = 'close-button';
-    closeButton.onclick = function() {
+    closeButton.onclick = function () {
         document.body.removeChild(popup);
     };
     popup.appendChild(closeButton);
@@ -89,267 +87,154 @@ function showResultPopup(result, averagePitch) {
     document.body.appendChild(popup);
 }
 
-// Add this function to end the recording
 function endRecording() {
     isRecording = false;
     startButton.textContent = "Begin Test";
     document.getElementById("status").textContent = "Test completed";
     document.getElementById("countdown").textContent = "";
-    
+
     // Calculate and display the result
-    var averagePitch = pitchSamples.reduce((a, b) => a + b, 0) / pitchSamples.length;
+    var averagePitch = filteredSamples.length > 0 ? filteredSamples.reduce((a, b) => a + b, 0) / filteredSamples.length : 0;
     var result = getPitchTier(averagePitch);
-    
+
     // Show the result pop-up
     showResultPopup(result, averagePitch);
-    
+
     // Update the existing result display
     document.getElementById("deepnessResult").innerText = "Result: " + result;
     document.getElementById("medianFrequency").innerText = Math.round(averagePitch) + " Hz";
-    
-    // Clear the volume bars when recording stops
-    clearVolumeBars();
 }
 
 // Recieving audio input
 navigator.mediaDevices.getUserMedia({
-	audio: true
+    audio: true
 })
-	.then(function (stream) {
-		audioContext = new AudioContext();
-		analyser = audioContext.createAnalyser();
-		const microphone = audioContext.createMediaStreamSource(stream);
-		const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+    .then(function (stream) {
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
 
-		//Setting up the canvas
-		CANVAS = document.getElementById("waveform");
-		if (CANVAS) {
-			waveCanvas = CANVAS.getContext("2d");
-			console.log("Canvas set up successfully"); // Add this line
-		} else {
-			console.error("Canvas element not found"); // Add this line
-		}
+        CANVAS = document.getElementById("waveform");
+        if (CANVAS) {
+            waveCanvas = CANVAS.getContext("2d");
+            console.log("Canvas set up successfully"); // Add this line
+        } else {
+            console.error("Canvas element not found"); // Add this line
+        }
 
-			// Remove this line as we'll call it only when recording starts
-			// instantiatePids(100, 1);
+        analyser.smoothingTimeConstant = 0.8;
+        analyser.fftSize = 2048;
 
-		analyser.smoothingTimeConstant = 0.8;
-		analyser.fftSize = 2048;
+        microphone.connect(analyser);
+        analyser.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
 
-		microphone.connect(analyser);
-		analyser.connect(scriptProcessor);
-		scriptProcessor.connect(audioContext.destination);
+        startButton.addEventListener("click", toggleRecording);
 
-		// Add this event listener after the getUserMedia promise chain
-		startButton.addEventListener("click", toggleRecording);
+        scriptProcessor.onaudioprocess = function () {
+            if (isRecording) {
+                analyser.getFloatTimeDomainData(buf);
+                updatePitch();
+                DrawWaveform();
 
-		scriptProcessor.onaudioprocess = function () {
-			if (isRecording) {
-				array = new Uint8Array(analyser.frequencyBinCount);
-				analyser.getByteFrequencyData(array);
-
-				// Remove this line as we're not using volume bars anymore
-				// colorPids(array);
-
-				updatePitch();
-				
-				// Get the time domain data for waveform visualization
-				analyser.getFloatTimeDomainData(buf);
-				DrawWaveform();
-
-				// Check if the test duration has elapsed
-				if (Date.now() - testStartTime >= testDuration * 1000) {
-					endRecording();
-				}
-			}
-		};
-	})
-	//Catching errors
-	.catch(function (err) {
-		console.error(err);
-	});
-
-// Add this function to clear volume bars
-function clearVolumeBars() {
-	var volumeBars = document.getElementsByClassName("volumeBar")[0];
-	if (volumeBars) {
-		volumeBars.innerHTML = '';
-	}
-}
-
-//Function for setting up the volume bar
-function instantiatePids(amount, gap) {
-	var volumeBars = document.getElementsByClassName("volumeBar");
-	if (volumeBars.length === 0) {
-		console.error("Volume bar container not found");
-		return;
-	}
-	var container = volumeBars[0];
-	container.innerHTML = ''; // Clear existing pids
-
-	var containerWidth = container.offsetWidth;
-	var pidWidth = (containerWidth - 0.5) / amount - gap;
-
-	for (let i = 0; i < amount; i++) {
-		var pid = document.createElement("div");
-		pid.classList.add('pid');
-		pid.style.width = pidWidth + "px";
-		pid.style.marginRight = gap + "px";
-		container.appendChild(pid);
-	}
-}
-
-function CalculateVol(array){
-	const arraySum = array.reduce((a, value) => a + value, 0);
-	const vol = arraySum / array.length;
-	return vol;
-}
-
-//Function for updating volume bar
-function colorPids(array) {
-	const vol = CalculateVol(array);
-
-	const allPids = [...document.querySelectorAll('.pid')];
-	const numberOfPidsToColor = Math.round(vol / (100 / allPids.length));
-	const pidsToColor = allPids.slice(0, numberOfPidsToColor);
-
-	for (const pid of allPids) {
-		pid.style.backgroundColor = "#19093c";
-	}
-
-	var pidID = 0;
-	for (const pid of pidsToColor) {
-		if(pidID<33)
-			pid.style.backgroundColor = "#7279d4";
-		else if (pidID < 67)
-			pid.style.backgroundColor = "#9972d4";
-		else 
-			pid.style.backgroundColor = "#d472d2";
-		pidID++;
-	}
-}
-
-//Function for converting pitch to note
-var noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+                if (Date.now() - testStartTime >= testDuration * 1000) {
+                    endRecording();
+                }
+            }
+        };
+    })
+    .catch(function (err) {
+        console.error(err);
+    });
 
 function noteFromPitch(frequency) {
-	var noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
-	return Math.round(noteNum) + 69;
+    var noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
+    return Math.round(noteNum) + 69;
 }
 
-//Pitch detection - Autocorrelation method
-
-//Setting up the audio buffer
-var buflen = 2048;
-var buf = new Float32Array(buflen);
-
-// Implementing the ACF2+ algorithm
 function autoCorrelate(buf, sampleRate) {
-	var size = buf.length;
-	var rms = 0;
+    var size = buf.length;
+    var rms = 0;
 
-	for (var i = 0; i < size; i++) {
-		var val = buf[i];
-		rms += val * val;
-	}
+    for (var i = 0; i < size; i++) {
+        var val = buf[i];
+        rms += val * val;
+    }
 
-	//Calculating Root Mean Square
-	rms = Math.sqrt(rms / size);
-	if (rms < 0.01) // not enough signal
-		return -1;
+    rms = Math.sqrt(rms / size);
+    if (rms < 0.01) return -1; // Signal too weak
 
-	//Removing all the frequencies lower the threshold
-	var cutFrom = 0, cutTo = size - 1, threshold = 0.2;
-	for (var i = 0; i < size / 2; i++)
-		if (Math.abs(buf[i]) < threshold) { cutFrom = i; break; }
-	for (var i = 1; i < size / 2; i++)
-		if (Math.abs(buf[size - i]) < threshold) { cutTo = size - i; break; }
+    var r1 = 0, r2 = size - 1;
+    for (var i = 0; i < size / 2; i++) {
+        if (Math.abs(buf[i]) < 0.01) {
+            r1 = i;
+            break;
+        }
+    }
 
-	buf = buf.slice(cutFrom, cutTo);
-	size = buf.length;
+    for (var i = 1; i < size / 2; i++) {
+        if (Math.abs(buf[size - i]) < 0.01) {
+            r2 = size - i;
+            break;
+        }
+    }
 
-	//Autocorrelating the frequencies
-	var c = new Array(size).fill(0);
-	for (var i = 0; i < size; i++)
-		for (var j = 0; j < size - i; j++)
-			c[i] = c[i] + buf[j] * buf[j + i];
+    buf = buf.slice(r1, r2);
+    size = buf.length;
 
-	var d = 0;
-	while (c[d] > c[d + 1])
-		d++;
+    var c = new Array(size).fill(0);
+    for (var i = 0; i < size; i++) {
+        for (var j = 0; j < size - i; j++) {
+            c[i] += buf[j] * buf[j + i];
+        }
+    }
 
-	var maxVal = -1, maxPos = -1;
-	for (var i = d; i < size; i++) {
-		if (c[i] > maxVal) {
-			maxVal = c[i];
-			maxPos = i;
-		}
-	}
-	var T0 = maxPos;
+    var d = 0;
+    while (c[d] > c[d + 1]) d++;
+    var maxVal = -1, maxPos = -1;
+    for (var i = d; i < size; i++) {
+        if (c[i] > maxVal) {
+            maxVal = c[i];
+            maxPos = i;
+        }
+    }
 
-	var x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-	a = (x1 + x3 - 2 * x2) / 2;
-	b = (x3 - x1) / 2;
-	if (a) T0 = T0 - b / (2 * a);
+    if (maxPos === -1) return -1; // No pitch detected
 
-	return sampleRate / T0;
+    var T0 = maxPos;
+    return sampleRate / T0;
 }
 
-//Function for updating pitch 
+// Function for updating pitch and filtering out unrealistic frequencies
 function updatePitch(time) {
-	var cycles = new Array;
+    analyser.getFloatTimeDomainData(buf);
+    var ac = autoCorrelate(buf, audioContext.sampleRate);
 
-	analyser.getFloatTimeDomainData(buf);
-	var ac = autoCorrelate(buf, audioContext.sampleRate);
+    // Ignore frequencies that are too high to be a human voice
+    if (ac != -1 && ac <= 500) {
+        pitchSamples.push(ac);
 
-	// Calling the draw function every time updatePitch is called
-	DrawWaveform();
+        // Filter out samples to store only valid pitches
+        filteredSamples.push(ac);
+        pitchTxt.innerText = Math.round(ac);
 
-	if (ac != -1) {
-		pitch = ac;
-		pitchSamples.push(pitch);
-		pitchTxt.innerText = Math.round(pitch);
+        var note = noteFromPitch(ac);
+        noteTxt.innerHTML = noteStrings[note % 12];
 
-		var note = noteFromPitch(pitch);
-		noteTxt.innerHTML = noteStrings[note % 12];
-
-		document.getElementById("frequencyDisplay").innerText = "Current frequency: " + Math.round(pitch) + " Hz";
-	}
+        document.getElementById("frequencyDisplay").innerText = "Current frequency: " + Math.round(ac) + " Hz";
+    }
 }
+var lastDrawTime = 0; // To control the frame rate
 
-function print(){
-	console.log(array);
-}
-
-//Function for matching input pitch to a target pitch - currently not in use
-function matchPitch(pitch, target, errorMargin, matchPid) {
-	if (pitch - errorMargin < target && target < pitch + errorMargin) {
-		matchPid.style.backgroundColor = "#69ce2b";
-		return true;
-	}
-
-	else {
-		matchPid.style.backgroundColor = "red";
-		return false;
-	}
-}
-
-//Function for matching input pitch to a target note - currently not in use
-function matchNote(pitch, target, matchPid) {
-	var note = noteFromPitch(pitch);
-	if (noteStrings[note % 12] == target) {
-		matchPid.style.backgroundColor = "#69ce2b";
-		return true;
-	}
-
-	else {
-		matchPid.style.backgroundColor = "red";
-		return false;
-	}
-}
-
-//Function responsible for drawing the waveform
 function DrawWaveform() {
+    // Limit to 30 FPS (33 milliseconds per frame)
+    var now = performance.now();
+    if (now - lastDrawTime < 33) {
+        return;
+    }
+    lastDrawTime = now;
+
     if (!CANVAS) {
         console.error("Canvas not available");
         return;
@@ -358,32 +243,47 @@ function DrawWaveform() {
     var width = CANVAS.width;
     var height = CANVAS.height;
 
+    // Clear the canvas
     waveCanvas.clearRect(0, 0, width, height);
-    waveCanvas.lineWidth = 2;
-    waveCanvas.strokeStyle = "#000000";  // Black color for visibility
 
-    waveCanvas.beginPath();
+    // Set properties for the columns
+    waveCanvas.fillStyle = "#007BFF"; // Blue color for the columns
 
-    var barWidth = width / buf.length;
-    for (var i = 0; i < buf.length; i++) {
-        var v = Math.abs(buf[i]); // Use absolute value for positive heights
-        var y = v * height;
-        waveCanvas.rect(i * barWidth, height - y, barWidth, y);
+    // Adjust the sample rate to smooth out the waveform
+    var sampleRate = Math.floor(buf.length / 150); // Increase sample rate to 150 columns for more detail
+    var columnWidth = width / 150; // Fixed width for 150 columns
+
+    for (var i = 0; i < 150; i++) {
+        var sampleIndex = i * sampleRate; // Index in the buffer to sample
+        var v = Math.abs(buf[sampleIndex]); // Absolute value to avoid negative heights
+
+        // Smooth the column height by averaging the current and next sample
+        var nextSampleIndex = (i + 1) * sampleRate < buf.length ? (i + 1) * sampleRate : sampleIndex;
+        var nextV = Math.abs(buf[nextSampleIndex]); // Next data point for smoothing
+
+        // Calculate the average between current and next sample for a smoother transition
+        var smoothedValue = (v + nextV) / 2;
+
+        // Scale amplitude to fit the canvas height
+        var columnHeight = smoothedValue * height;
+
+        // Draw the columns as rectangles
+        waveCanvas.fillRect(i * columnWidth, height - columnHeight, columnWidth, columnHeight);
     }
-
-    waveCanvas.stroke();
 }
 
+
+// Function to categorize pitch into tiers
 function getPitchTier(frequency) {
-	if (frequency < 85) {
-		return "Chad";
-	} else if (frequency < 110) {
-		return "Sigma";
-	} else if (frequency < 140) {
-		return "Normal";
-	} else if (frequency < 175) {
-		return "Gay";
-	} else {
-		return "Very Gay";
-	}
+    if (frequency < 85) {
+        return "Chad";
+    } else if (frequency < 110) {
+        return "Sigma";
+    } else if (frequency < 140) {
+        return "Normal";
+    } else if (frequency < 175) {
+        return "Gay";
+    } else {
+        return "Very Gay";
+    }
 }
