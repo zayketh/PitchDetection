@@ -75,8 +75,9 @@ function showResultPopup(result, averagePitch) {
     shareButton.textContent = 'Share on X';
     shareButton.className = 'share-button';
     shareButton.onclick = function () {
-        const tweetText = encodeURIComponent(`My voice test result: ${result} (${Math.round(averagePitch)} Hz) - Test your voice at solanagaydar.app`);
+        const tweetText = encodeURIComponent(`My $gaydar test result: ${result} (${Math.round(averagePitch)} Hz) - See if ur a fag at solanagaydar.app`);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+        
     };
     popup.appendChild(shareButton);
 
@@ -258,24 +259,25 @@ function DrawWaveform() {
     waveCanvas.clearRect(0, 0, width, height);
 
     // Set properties for the columns
-    waveCanvas.fillStyle = "#007BFF"; // Blue color for the columns
-
     var columnWidth = width / 150;
 
     for (var i = 0; i < 150; i++) {
         var value = rollingBuffer[i];
-        
+
         // Scale amplitude to fit the canvas height
         var columnHeight = value * height;
 
-        // Draw the columns as rectangles
+        // Generate rainbow colors dynamically based on the column index
+        var hue = (i / 150) * 360; // This will give a hue between 0 and 360 degrees
+        waveCanvas.fillStyle = `hsl(${hue}, 100%, 50%)`; // Use HSL to get a smooth rainbow transition
+
+        // Draw the columns as rectangles with the rainbow colors
         waveCanvas.fillRect(i * columnWidth, height - columnHeight, columnWidth, columnHeight);
     }
 
     // Request next animation frame
     animationFrameId = requestAnimationFrame(DrawWaveform);
 }
-
 // Function to categorize pitch into tiers
 function getPitchTier(frequency) {
     if (frequency < 85) {
