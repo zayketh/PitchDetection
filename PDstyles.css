@@ -1,73 +1,279 @@
+:root {
+  --primary-color: #000000;
+  --secondary-color: #ffffff;
+  --background-color: #f0f0f0;
+  --text-color: #333333;
+  --light-gray: #e0e0e0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.8;
+  color: var(--text-color);
+  background-color: var(--background-color);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 60px;
+  background-color: var(--primary-color);
+  color: var(--secondary-color);
+  padding: 80px 20px;
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-size: 4em;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+h2 {
+  color: var(--primary-color);
+  margin-bottom: 30px;
+  font-size: 2.5em;
+  font-weight: 700;
+}
+
+h3 {
+  color: var(--primary-color);
+  margin-top: 30px;
+  margin-bottom: 15px;
+  font-size: 1.8em;
+  font-weight: 600;
+}
+
+.analysis-box, .result-table, .faq {
+  background-color: var(--secondary-color);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin-bottom: 60px;
+  padding: 40px;
+}
+
+.instructions, .script {
+  margin-bottom: 30px;
+  font-size: 1.1em;
+}
+
+.button-container {
+  text-align: center;
+  margin: 30px 0;
+}
+
+.btn {
+  background-color: var(--primary-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 15px 30px;
+  font-size: 1.2em;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.btn:hover {
+  background-color: #333333;
+  transform: translateY(-2px);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.4);
+}
+
+.status, .countdown, .result {
+  margin-top: 30px;
+  font-size: 1.2em;
+}
+
+.countdown {
+  font-size: 2em;
+  font-weight: bold;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.frequency-display {
+  background-color: var(--light-gray);
+  border-radius: 10px;
+  padding: 30px;
+  margin-top: 30px;
+  font-size: 1.2em;
+  text-align: center;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 30px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+th, td {
+  padding: 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) {
+  background-color: var(--light-gray);
+}
+
+.measured-by {
+  text-align: right;
+  font-style: italic;
+  margin-top: 20px;
+  color: #666666;
+}
+
+.faq {
+  background-color: var(--secondary-color);
+}
+
+.faq h2 {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.faq h3 {
+  color: var(--primary-color);
+  margin-top: 40px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 3em;
+  }
+
+  .analysis-box, .result-table, .faq {
+    padding: 30px 20px;
+  }
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  max-width: 800px;
+  margin: 30px auto;
+  display: block;
+  border-radius: 10px;
+}
+
+.Volume {
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+.visSelect {
+  border: 2px solid var(--primary-color);
+  background-color: var(--secondary-color);
+  border-radius: 50px;
+  padding: 10px 20px;
+  font-size: 1em;
+  margin-top: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.visSelect:hover {
+  background-color: var(--light-gray);
+}
+
+canvas#waveform {
+  width: 100%;
+  height: 200px;
+  margin-top: 30px;
+  border: 1px solid var(--light-gray);
+  border-radius: 10px;
+  background-color: var(--secondary-color);
+}
+
+.vis-select-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.visSelect {
+  margin-left: 10px;
+  padding: 5px 10px;
+  border: 1px solid var(--primary-color);
+  border-radius: 5px;
+  background-color: var(--secondary-color);
+  color: var(--primary-color);
+  font-size: 1em;
+}
+
+.volume-container {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
 .volumeBar {
-    display: inline-block;
-    width: -webkit-calc(100% - 60px);
-}
-.pid, .matchPid{
-  width: 20px;
+  width: 100%;
   height: 20px;
+  background-color: var(--light-gray);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pid {
+  height: 100%;
   display: inline-block;
-  margin: 0px;
+  background-color: var(--primary-color);
 }
 
-.inline {
-    display: inline-block;
-    font-size: 20px;
-    color: #7279d4;
-    
+/* Add these styles at the end of your CSS file */
+
+.result-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--secondary-color);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    z-index: 1000;
 }
 
-canvas{
-    width:100%;
-    height: auto;
+.result-popup p {
+    font-size: 1.2em;
+    margin-bottom: 15px;
 }
 
-.PitchH1{
-  background-image:url("images/blue1.jpg");
-	background-size: cover;
-  border-radius: 40px;
-  color: #2a145d;
-  text-align: center;
-}
-.Volume{
-  margin-top:5px;
-  margin-bottom:5px;
-}
-
-.PitchDiv{
-  text-align: center;
-  margin: 10px;
-  margin-left:25%;
-  padding: 10px;
-  padding-top:2px;
-  border-radius: 30px;
-  width:50%;
-  background-color: #2a145d;
-  border:2px solid  #72bcd4;
-}
-
-.PitchForm{
-  padding: 5px;
-  padding-right: 10px;
-  border-style:solid;
-  text-align:center;
-	border:1px solid  #2a145d;
-	border-radius: 40px;
-	width:fit-content;
-	margin: 0px;
-	background-image:url("images/blue1.jpg");
-	background-size: cover;
-	color:white;
-
-}
-.group{
-  display: inline;
-  width: 100px;
-  padding: 10px;
-}
-
-
-.visSelect{
-  border: 2px solid #a9dff1;
-    background-color: transparent;
+.share-button, .close-button {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
     border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 10px;
+}
+
+.share-button:hover, .close-button:hover {
+    background-color: #333333;
 }

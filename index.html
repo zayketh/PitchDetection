@@ -1,99 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Voice Deepness Analyzer</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gaydar - Voice Analyzer</title>
   <link rel="stylesheet" href="PDstyles.css">
-  <script src="https://kit.fontawesome.com/bae8abee0f.js" crossorigin="anonymous"></script>
-  <style>
-    /* Modal styles */
-    #resultModal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      padding-top: 100px;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.4);
-    }
-
-    #modalContent {
-      background-color: #fefefe;
-      margin: auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-      text-align: center;
-      border-radius: 10px;
-    }
-
-    #closeModal {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    #closeModal:hover,
-    #closeModal:focus {
-      color: black;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    /* Additional styling for status and countdown */
-    #status {
-      font-size: 20px;
-      margin-top: 20px;
-    }
-
-    #countdown {
-      font-size: 18px;
-      margin-top: 10px;
-      color: blue;
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <div class="container">
+    <header>
+      <h1>Gaydar</h1>
+      <p>Your voice says a lot about you.</p>
+    </header>
 
-  <div class="header">
-    <br>
-    <h1>Voice Deepness Analyzer</h1>
-    <p>Analyze the deepness of your voice</p>
-    <br>
-  </div>
-  <div class="PitchDiv">
-    <h1 class="pitchH1">Voice Analysis</h1>
-
-    <!-- Recording Controls -->
-    <button id="startButton">Start Recording</button>
-    <!-- Removed Stop Recording button since recording stops automatically -->
-
-    <!-- Recording Status -->
-    <p id="status"></p>
-    <p id="countdown"></p>
-
-    <!-- Display Result -->
-    <p id="deepnessResult"></p>
-
-    <!-- Modal Popup -->
-    <div id="resultModal">
-      <div id="modalContent">
-        <span id="closeModal">&times;</span>
-        <p id="modalMessage"></p>
+    <main>
+      <div class="analysis-box">
+        <p class="instructions">Please speak loudly and clearly while we record your voice for 10 seconds. We don't store any recordings or results; the entire test is done on the client side and not on our servers.</p>
+        <p class="script">If you can't think of anything to say, you can read this script: "I am currently testing my voice, my favorite color is blue, the sky is sunny, my voice is loud and clear, I'm using a proper mic, my environment is quiet."</p>
+        <div class="button-container">
+          <button id="startButton" class="btn">Begin Test</button>
+        </div>
+        <p id="status" class="status"></p>
+        <p id="countdown" class="countdown"></p>
+        <div id="frequencyDisplay" class="frequency-display">
+          <p>The frequency of your voice will display here</p>
+        </div>
+        <p id="deepnessResult" class="result"></p>
+        
+        <!-- Add the canvas for waveform visualization -->
+        <canvas id="waveform" width="800" height="200"></canvas>
+        
+        <!-- Add the visualization type selector -->
+        <div class="vis-select-container">
+          <label for="waveType">Visualization Type:</label>
+          <select id="waveType" class="visSelect">
+            <option value="wave">Wave</option>
+            <option value="columns">Columns</option>
+            <option value="waveColumns">Wave Columns</option>
+            <option value="waveBoxes">Wave Boxes</option>
+            <option value="boxes">Boxes</option>
+          </select>
+        </div>
+        
+        <div class="volume-container">
+          <div class="volumeBar"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Optional: Canvas or other elements -->
-    <!-- <canvas id="waveform" width="958" height="256"></canvas><br> -->
+      <div class="result-table">
+        <h2>Your median was: <span id="medianFrequency"></span></h2>
+        <table>
+          <tr>
+            <td>&lt; 100 Hz</td>
+            <td>Chad</td>
+          </tr>
+          <tr>
+            <td>100 - 120 Hz</td>
+            <td>Sigma</td>
+          </tr>
+          <tr>
+            <td>120 - 140 Hz</td>
+            <td>Normal</td>
+          </tr>
+          <tr>
+            <td>140 - 160 Hz</td>
+            <td>Gay</td>
+          </tr>
+          <tr>
+            <td>&gt; 160 Hz</td>
+            <td>Very Gay</td>
+          </tr>
+        </table>
+        <p class="measured-by">Measured by Gaydar</p>
+      </div>
 
-  </div>
-  <div class="footerChords">
+      <div class="faq">
+        <h2>FAQ</h2>
+        <h3>Who made this?</h3>
+        <p>It was made by the vers and lukas podcast team. Community members in our discord expressed an interest in using the tool for themselves so we made it public.</p>
+        <h3>What is a voice frequency?</h3>
+        <p>A voice frequency (VF) or voice band is the range of audio frequencies used for the transmission of speech.</p>
+        <h3>Is this scientifically accurate?</h3>
+        <p>This tool is for entertainment purposes only and should not be considered a scientific or medical assessment.</p>
+      </div>
+    </main>
   </div>
 
   <script src="PitchDetection.js"></script>
