@@ -1,308 +1,230 @@
-var pitchTxt = document.getElementById("pitchElement");
-var noteTxt = document.getElementById("noteElement");
-var analyser;
-var audioContext = null;
-var CANVAS = null;
-var array = null;
+// PitchDetection.js
 
-//Recieving audio input
-navigator.mediaDevices.getUserMedia({
-	audio: true
-})
-	.then(function (stream) {
-		audioContext = new AudioContext();
-		analyser = audioContext.createAnalyser();
-		const microphone = audioContext.createMediaStreamSource(stream);
-		const scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+// Variables for recording and analysis
+var audioContext;
+var microphone;
+var scriptProcessor;
+var audioData = []; // Array to store audio data chunks
+var isRecording = false;
+var countdownTimer;
+var countdownValue = 5; // 5 seconds countdown
 
-		//Setting up the canvas
-		CANVAS = document.getElementById("waveform");
-		if (CANVAS) {
-			waveCanvas = CANVAS.getContext("2d");
-		}
+// Set up event listeners for the buttons
+document.getElementById("startButton").addEventListener("click", startRecording);
+// Removed the stop button listener since we auto-stop after 5 seconds
 
-		//Setting up the volume bar
-		instantiatePids(100, 1);
+// Get access to the microphone and set up the audio nodes
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(function(stream) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    microphone = audioContext.createMediaStreamSource(stream);
 
-		analyser.smoothingTimeConstant = 0.8;
-		analyser.fftSize = 2048;
+    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
-		microphone.connect(analyser);
-		analyser.connect(scriptProcessor);
-		scriptProcessor.connect(audioContext.destination);
+    microphone.connect(scriptProcessor);
 
-		scriptProcessor.onaudioprocess = function () {
-			array = new Uint8Array(analyser.frequencyBinCount);
-			analyser.getByteFrequencyData(array);
+    // To ensure the onaudioprocess event fires, we need to connect the processor node to the destination
+    // We can use a GainNode to silence the output to avoid feedback
+    var gainNode = audioContext.createGain();
+    gainNode.gain.value = 0; // Set volume to zero to prevent feedback
+    scriptProcessor.connect(gainNode);
+    gainNode.connect(audioContext.destination);
 
+    scriptProcessor.onaudioprocess = function(e) {
+      if (!isRecording) return;
+      // Get audio data and store it
+      var inputData = e.inputBuffer.getChannelData(0);
+      var bufferData = new Float32Array(inputData);
+      audioData.push(bufferData);
+    };
+  })
+  .catch(function(err) {
+    console.error('The following error occurred: ' + err);
+    alert('Error accessing the microphone: ' + err.message);
+  });
 
-			//Updating pitch and volume according to the input sound
-			colorPids(array);
-			updatePitch();
-		};
-	})
-	//Catching errors
-	.catch(function (err) {
-		console.error(err);
-	});
+// Start recording
+function startRecording() {
+  if (isRecording) return; // Prevent multiple recordings at the same time
+  audioData = []; // Reset audio data array
+  isRecording = true;
+  countdownValue = 5; // Reset countdown
+  document.getElementById("countdown").innerText = "Recording starts in 5 seconds...";
+  document.getElementById("startButton").disabled = true; // Disable start button
 
-//Function for setting up the volume bar
-function instantiatePids(amount, gap) {
-	var volumeBars = document.getElementsByClassName("volumeBar");
+  // Visibly show the user when the recording starts
+  document.getElementById("status").innerText = "Recording...";
+  document.getElementById("status").style.color = "red";
 
-	var pidWidth = (volumeBars[0].offsetWidth - 0.5) / (amount) - gap;
+  // Start the countdown
+  countdownTimer = setInterval(function() {
+    if (countdownValue > 0) {
+      document.getElementById("countdown").innerText = "Recording ends in " + countdownValue + " seconds...";
+      countdownValue--;
+    } else {
+      stopRecording();
+      clearInterval(countdownTimer);
+    }
+  }, 1000);
 
-	for (let i = 0; i < amount; i++) {
-		var pid = document.createElement("div");
-		pid.classList.add('pid');
-		pid.style.width = pidWidth + "px";
-		pid.style.marginRight = gap + "px";
-
-
-		volumeBars[0].appendChild(pid);
-	}
-
+  console.log("Recording started");
 }
 
-function CalculateVol(array){
-	const arraySum = array.reduce((a, value) => a + value, 0);
-	const vol = arraySum / array.length;
-	return vol;
+// Stop recording
+function stopRecording() {
+  isRecording = false;
+  console.log("Recording stopped");
+
+  // Reset UI elements
+  document.getElementById("status").innerText = "Recording stopped.";
+  document.getElementById("status").style.color = "black";
+  document.getElementById("countdown").innerText = "";
+  document.getElementById("startButton").disabled = false; // Enable start button
+
+  analyzeRecording();
 }
 
-//Function for updating volume bar
-function colorPids(array) {
-	const vol = CalculateVol(array);
+// Analyze the recorded audio to determine deepness of voice
+function analyzeRecording() {
+  if (audioData.length === 0) {
+    showModal("No audio data recorded.");
+    return;
+  }
+  // Concatenate all audio data into a single Float32Array
+  var totalLength = audioData.reduce((sum, arr) => sum + arr.length, 0);
+  var combinedData = new Float32Array(totalLength);
+  var offset = 0;
+  for (var i = 0; i < audioData.length; i++) {
+    combinedData.set(audioData[i], offset);
+    offset += audioData[i].length;
+  }
 
-	const allPids = [...document.querySelectorAll('.pid')];
-	const numberOfPidsToColor = Math.round(vol / (100 / allPids.length));
-	const pidsToColor = allPids.slice(0, numberOfPidsToColor);
+  // Calculate deepness
+  var deepness = calculateDeepness(combinedData, audioContext.sampleRate);
+  if (deepness !== -1) {
+    var voiceType = '';
+    if (deepness < 165) {
+      voiceType = 'Deep Voice';
+    } else if (deepness >= 165 && deepness <= 255) {
+      voiceType = 'Medium Voice';
+    } else {
+      voiceType = 'High Voice';
+    }
+    var resultText = "Average Pitch: " + deepness.toFixed(2) + " Hz (" + voiceType + ")";
+    document.getElementById("deepnessResult").innerText = resultText;
 
-	for (const pid of allPids) {
-		pid.style.backgroundColor = "#19093c";
-	}
-
-	var pidID = 0;
-	for (const pid of pidsToColor) {
-		if(pidID<33)
-			pid.style.backgroundColor = "#7279d4";
-		else if (pidID < 67)
-			pid.style.backgroundColor = "#9972d4";
-		else 
-			pid.style.backgroundColor = "#d472d2";
-		pidID++;
-	}
+    // Show a popup modal with the evaluation
+    showModal("Voice Analysis Result:<br>" + resultText);
+  } else {
+    document.getElementById("deepnessResult").innerText = "Unable to detect pitch.";
+    showModal("Unable to detect pitch.");
+  }
 }
 
-//Function for converting pitch to note
-var noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+// Function to calculate the average pitch (deepness)
+function calculateDeepness(data, sampleRate) {
+  var frameSize = 2048;
+  var totalFrames = Math.floor(data.length / frameSize);
+  var sumPitch = 0;
+  var validFrames = 0;
 
-function noteFromPitch(frequency) {
-	var noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
-	return Math.round(noteNum) + 69;
+  for (var i = 0; i < totalFrames; i++) {
+    var buf = data.slice(i * frameSize, (i + 1) * frameSize);
+    var pitch = autoCorrelate(buf, sampleRate);
+    if (pitch !== -1 && pitch < 1000) { // Exclude unreasonable pitches
+      sumPitch += pitch;
+      validFrames++;
+    }
+  }
+
+  if (validFrames > 0) {
+    var avgPitch = sumPitch / validFrames;
+    return avgPitch;
+  } else {
+    return -1;
+  }
 }
 
-//Pitch detection - Autocorrelation method
-
-//Setting up the audio buffer
-var buflen = 2048;
-var buf = new Float32Array(buflen);
-
-// Implementing the ACF2+ algorithm
+// Auto-correlation function for pitch detection
 function autoCorrelate(buf, sampleRate) {
-	var size = buf.length;
-	var rms = 0;
+  var SIZE = buf.length;
+  var rms = 0;
 
-	for (var i = 0; i < size; i++) {
-		var val = buf[i];
-		rms += val * val;
-	}
+  for (var i = 0; i < SIZE; i++) {
+    var val = buf[i];
+    rms += val * val;
+  }
+  rms = Math.sqrt(rms / SIZE);
 
-	//Calculating Root Mean Square
-	rms = Math.sqrt(rms / size);
-	if (rms < 0.01) // not enough signal
-		return -1;
+  if (rms < 0.01) // not enough signal
+    return -1;
 
-	//Removing all the frequencies lower the threshold
-	var cutFrom = 0, cutTo = size - 1, threshold = 0.2;
-	for (var i = 0; i < size / 2; i++)
-		if (Math.abs(buf[i]) < threshold) { cutFrom = i; break; }
-	for (var i = 1; i < size / 2; i++)
-		if (Math.abs(buf[size - i]) < threshold) { cutTo = size - i; break; }
+  var r1 = 0, r2 = SIZE - 1, threshold = 0.2;
 
-	buf = buf.slice(cutFrom, cutTo);
-	size = buf.length;
+  // Trim the buffer to remove any samples that are below the threshold
+  for (var i = 0; i < SIZE / 2; i++) {
+    if (Math.abs(buf[i]) < threshold) {
+      r1 = i;
+      break;
+    }
+  }
+  for (var i = 1; i < SIZE / 2; i++) {
+    if (Math.abs(buf[SIZE - i]) < threshold) {
+      r2 = SIZE - i;
+      break;
+    }
+  }
 
-	//Autocorrelating the frequencies
-	var c = new Array(size).fill(0);
-	for (var i = 0; i < size; i++)
-		for (var j = 0; j < size - i; j++)
-			c[i] = c[i] + buf[j] * buf[j + i];
+  buf = buf.slice(r1, r2);
+  SIZE = buf.length;
 
-	var d = 0;
-	while (c[d] > c[d + 1])
-		d++;
+  var c = new Array(SIZE).fill(0);
+  for (var i = 0; i < SIZE; i++) {
+    for (var j = 0; j < SIZE - i; j++) {
+      c[i] = c[i] + buf[j] * buf[j + i];
+    }
+  }
 
-	var maxVal = -1, maxPos = -1;
-	for (var i = d; i < size; i++) {
-		if (c[i] > maxVal) {
-			maxVal = c[i];
-			maxPos = i;
-		}
-	}
-	var T0 = maxPos;
+  var d = 0;
+  while (c[d] > c[d + 1])
+    d++;
+  var maxval = -1;
+  var maxpos = -1;
+  for (var i = d; i < SIZE; i++) {
+    if (c[i] > maxval) {
+      maxval = c[i];
+      maxpos = i;
+    }
+  }
+  var T0 = maxpos;
 
-	var x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-	a = (x1 + x3 - 2 * x2) / 2;
-	b = (x3 - x1) / 2;
-	if (a) T0 = T0 - b / (2 * a);
+  var x1 = c[T0 - 1];
+  var x2 = c[T0];
+  var x3 = c[T0 + 1];
+  var a = (x1 + x3 - 2 * x2) / 2;
+  var b = (x3 - x1) / 2;
+  if (a)
+    T0 = T0 - b / (2 * a);
 
-	return sampleRate / T0;
+  return sampleRate / T0;
 }
 
-//Function for updating pitch 
-function updatePitch(time) {
-	var cycles = new Array;
-	//console.log(buf);
-
-	analyser.getFloatTimeDomainData(buf);
-	var ac = autoCorrelate(buf, audioContext.sampleRate);
-
-	//Calling the draw function
-	var type = document.getElementById("waveType").value;
-	DrawWaveform(type, 2, 20, " #a9dff1", "#72bcd4", 2); 
-
-	if (ac == -1) {
-		//Results are too vague - returning nothing
-		pitchTxt.innerText = "--";
-		noteTxt.innerText = "-";
-	} else {
-		//Results are clear - returing the corresponding data
-		pitch = ac;
-		pitchTxt.innerText = Math.round(pitch);
-
-		var note = noteFromPitch(pitch);
-		noteTxt.innerHTML = noteStrings[note % 12];
-	}
+// Function to show a modal popup with the evaluation
+function showModal(message) {
+  var modal = document.getElementById("resultModal");
+  var modalContent = document.getElementById("modalContent");
+  modalContent.innerHTML = message;
+  modal.style.display = "block";
 }
 
-function print(){
-	console.log(array);
-}
+// Close the modal when the user clicks on <span> (x) or anywhere outside the modal
+window.onclick = function(event) {
+  var modal = document.getElementById("resultModal");
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+};
 
-//Function for matching input pitch to a target pitch - currently not in use
-function matchPitch(pitch, target, errorMargin, matchPid) {
-	if (pitch - errorMargin < target && target < pitch + errorMargin) {
-		matchPid.style.backgroundColor = "#69ce2b";
-		return true;
-	}
-
-	else {
-		matchPid.style.backgroundColor = "red";
-		return false;
-	}
-}
-
-//Function for matching input pitch to a target note - currently not in use
-function matchNote(pitch, target, matchPid) {
-	var note = noteFromPitch(pitch);
-	if (noteStrings[note % 12] == target) {
-		matchPid.style.backgroundColor = "#69ce2b";
-		return true;
-	}
-
-	else {
-		matchPid.style.backgroundColor = "red";
-		return false;
-	}
-}
-
-//Function responsible for drawing the waveform
-function DrawWaveform(type, thickness, borderThickness, color, borderColor, gapSize) {
-
-	var width = CANVAS.width;
-	var height = CANVAS.height
-	waveCanvas.clearRect(0, 0, width, height);
-	waveCanvas.lineWidth = thickness;
-	waveCanvas.strokeStyle = color;
-
-	waveCanvas.beginPath();
-
-	//Drawing the waveform based on selected style
-	if (type == "wave") {
-		for (var i = 1; i < width; i++) {
-			waveCanvas.lineTo(i, (height / 2) + (buf[i] * (height / 2)));
-		}
-	}
-	else if (type == "columns") {
-		for (var i = 1; i < width; i += thickness + gapSize) {
-			waveCanvas.moveTo(i, height);
-			waveCanvas.lineTo(i, (height) - Math.abs(buf[i] * (height)) - thickness - 10);
-		}
-	}
-	else if (type == "waveColumns") {
-		for (var i = 1; i < width; i += thickness + gapSize) {
-
-			var waveHeight = (buf[i] * (height / 2));
-			waveCanvas.moveTo(i, height / 2 - waveHeight);
-
-			waveCanvas.lineTo(i, (height / 2) + waveHeight);
-		}
-	}
-	else if (type == "waveBoxes") {
-		for (var i = 1; i < width; i += thickness + gapSize) {
-
-			var waveHeight =
-				(buf[i] * (height / 2));
-
-			var x = (height / 2);
-
-			while (x >= (height / 2) + waveHeight) {
-				waveCanvas.moveTo(i, x);
-				waveCanvas.lineTo(i, x - thickness);
-
-				x -= thickness + gapSize;
-			}
-
-			x = (height / 2);
-
-			while (x <= (height / 2) - waveHeight) {
-				waveCanvas.moveTo(i, x);
-				waveCanvas.lineTo(i, x - thickness);
-
-				x += thickness + gapSize;
-			}
-
-		}
-	}
-	else if (type == "boxes") {
-		for (var i = 1; i < width; i += thickness + gapSize / 2) {
-			var x = height;
-
-			while (x > (height) + (buf[i] * (height)) - thickness * 5) {
-				waveCanvas.moveTo(i, x);
-				waveCanvas.lineTo(i, x - thickness);
-				x -= thickness + gapSize / 2;
-			}
-
-		}
-	}
-
-	waveCanvas.stroke();
-
-	//Drawing the borders
-	waveCanvas.strokeStyle = borderColor;
-	waveCanvas.lineWidth = borderThickness;
-
-	waveCanvas.beginPath();
-	waveCanvas.moveTo(0, 0);
-	waveCanvas.lineTo(0, height);
-	waveCanvas.moveTo(0, height);
-	waveCanvas.lineTo(width, height);
-	waveCanvas.moveTo(0, 0);
-	waveCanvas.lineTo(width, 0);
-
-	waveCanvas.moveTo(width, 0);
-	waveCanvas.lineTo(width, height);
-	waveCanvas.stroke();
-}
+document.getElementById("closeModal").onclick = function() {
+  document.getElementById("resultModal").style.display = "none";
+};

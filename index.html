@@ -1,54 +1,101 @@
-<!DOCTYPE>
+<!DOCTYPE html>
 <html>
 <head>
-	<title>Pitch Detection</title>
-	<link rel="stylesheet" href="styles.css">
-	<link rel="stylesheet" href="PDstyles.css">
-	<script type="text/javascript" src="script.js"></script>
-	<script src="https://kit.fontawesome.com/bae8abee0f.js" crossorigin="anonymous"></script>
+  <title>Voice Deepness Analyzer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="PDstyles.css">
+  <script src="https://kit.fontawesome.com/bae8abee0f.js" crossorigin="anonymous"></script>
+  <style>
+    /* Modal styles */
+    #resultModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      padding-top: 100px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+
+    #modalContent {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      text-align: center;
+      border-radius: 10px;
+    }
+
+    #closeModal {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #closeModal:hover,
+    #closeModal:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    /* Additional styling for status and countdown */
+    #status {
+      font-size: 20px;
+      margin-top: 20px;
+    }
+
+    #countdown {
+      font-size: 18px;
+      margin-top: 10px;
+      color: blue;
+    }
+  </style>
 </head>
-	
 <body>
 
-    <div class="header">
-        &nbsp;
-        <br>
-        <h1>Perfect Pitch</h1>
-        <p>The Perfect Pitch, The Perfect Way</p>
-        <br>
-    </div>
-    <div class="PitchDiv">
-        <h1 class="pitchH1">Pitch Detection</h1>
-        <div class="group">
-            <p class="inline">Current pitch value</p>
-            <p class="inline" id="pitchElement"></p>
-        </div>
-        <div class="group">
-            <p class="inline">Current pitch note</p>
-            <p class="inline" id="noteElement"></p>
-        </div>
+  <div class="header">
+    <br>
+    <h1>Voice Deepness Analyzer</h1>
+    <p>Analyze the deepness of your voice</p>
+    <br>
+  </div>
+  <div class="PitchDiv">
+    <h1 class="pitchH1">Voice Analysis</h1>
 
-        <canvas id="waveform" width="958" height="256"></canvas><br>
+    <!-- Recording Controls -->
+    <button id="startButton">Start Recording</button>
+    <!-- Removed Stop Recording button since recording stops automatically -->
 
-        <div class="Volume">
-            <i class="fa fa-volume-up" style="font-size:30px"></i>
-            <div class="volumeBar">
-            </div>
-        </div>
+    <!-- Recording Status -->
+    <p id="status"></p>
+    <p id="countdown"></p>
 
-        <form class="PitchForm" action="#">
-            <label style="color:#19093c " for="lang">Visualization Type</label>
-            <select class="visSelect" name="waveTypes" id="waveType">
-                <option value="wave">Wave</option>
-                <option value="columns">Columns</option>
-                <option value="waveColumns">Wave Columns</option>
-            </select>
-        </form>
-    </div>
-    <div class="footerChords">
+    <!-- Display Result -->
+    <p id="deepnessResult"></p>
+
+    <!-- Modal Popup -->
+    <div id="resultModal">
+      <div id="modalContent">
+        <span id="closeModal">&times;</span>
+        <p id="modalMessage"></p>
+      </div>
     </div>
 
+    <!-- Optional: Canvas or other elements -->
+    <!-- <canvas id="waveform" width="958" height="256"></canvas><br> -->
+
+  </div>
+  <div class="footerChords">
+  </div>
+
+  <script src="PitchDetection.js"></script>
 </body>
-		
-	<script src="PitchDetection.js"></script>
 </html>
