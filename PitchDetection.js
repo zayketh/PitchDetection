@@ -13,7 +13,7 @@ var startButton = document.getElementById("startButton");
 var isRecording = false;
 
 // Add these variables at the top of the file
-var testDuration = 5; // Test duration in seconds
+var testDuration = 10; // Test duration in seconds
 var testStartTime;
 var pitchSamples = [];
 var filteredSamples = []; // To store valid samples for averaging
