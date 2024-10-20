@@ -33,8 +33,20 @@ header {
   padding: 80px 20px;
 }
 
-h1 {
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 20px;
+}
+
+.logo {
+  width: 50px; /* Adjust this value based on the actual size of your image */
+  height: auto;
+  margin-right: 20px;
+}
+
+h1 {
   font-size: 4em;
   font-weight: 700;
   letter-spacing: -1px;
