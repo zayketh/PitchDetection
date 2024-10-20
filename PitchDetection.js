@@ -75,7 +75,7 @@ function showResultPopup(result, averagePitch) {
     shareButton.textContent = 'Share on X';
     shareButton.className = 'share-button';
     shareButton.onclick = function () {
-        const tweetText = encodeURIComponent(`My $gaydar test result: ${result} (${Math.round(averagePitch)} Hz) - See if ur a fag at solanagaydar.app`);
+        const tweetText = encodeURIComponent(`My $gaydar test result: ${result} (${Math.round(averagePitch)} Hz) - See if ur a fag at https://solanagaydar.app`);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
         
     };
