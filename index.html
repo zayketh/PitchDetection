@@ -25,11 +25,9 @@
         <p id="countdown" class="countdown"></p>
         <div id="frequencyDisplay" class="frequency-display">
           <p>The frequency of your voice will display here</p>
+          <canvas id="waveform" width="800" height="200"></canvas>
         </div>
         <p id="deepnessResult" class="result"></p>
-        
-        <!-- Add the canvas for waveform visualization -->
-        <canvas id="waveform" width="800" height="200"></canvas>
         
         <!-- Add the visualization type selector -->
         <div class="vis-select-container">
@@ -52,23 +50,23 @@
         <h2>Your median was: <span id="medianFrequency"></span></h2>
         <table>
           <tr>
-            <td>&lt; 100 Hz</td>
+            <td>&lt; 85 Hz</td>
             <td>Chad</td>
           </tr>
           <tr>
-            <td>100 - 120 Hz</td>
+            <td>85 - 110 Hz</td>
             <td>Sigma</td>
           </tr>
           <tr>
-            <td>120 - 140 Hz</td>
+            <td>110 - 140 Hz</td>
             <td>Normal</td>
           </tr>
           <tr>
-            <td>140 - 160 Hz</td>
+            <td>140 - 175 Hz</td>
             <td>Gay</td>
           </tr>
           <tr>
-            <td>&gt; 160 Hz</td>
+            <td>&gt; 175 Hz</td>
             <td>Very Gay</td>
           </tr>
         </table>

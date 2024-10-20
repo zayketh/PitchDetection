@@ -26,11 +26,21 @@ function toggleRecording() {
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
-        // Initialize the volume bars when recording starts
-        instantiatePids(100, 1);
+        
+        // Remove this line as we're not using volume bars anymore
+        // instantiatePids(100, 1);
         
         testStartTime = Date.now();
         pitchSamples = [];
+        
+        // Clear the initial text in the frequency display
+        document.getElementById("frequencyDisplay").innerHTML = '<canvas id="waveform" width="800" height="200"></canvas>';
+        
+        // Reinitialize the canvas after clearing the frequency display
+        CANVAS = document.getElementById("waveform");
+        if (CANVAS) {
+            waveCanvas = CANVAS.getContext("2d");
+        }
         
         // Start the countdown
         var countdownInterval = setInterval(function() {
@@ -138,9 +148,13 @@ navigator.mediaDevices.getUserMedia({
 				array = new Uint8Array(analyser.frequencyBinCount);
 				analyser.getByteFrequencyData(array);
 
-				//Updating pitch and volume according to the input sound
-				colorPids(array);
+				// Remove this line as we're not using volume bars anymore
+				// colorPids(array);
+
 				updatePitch();
+				
+				// Get the time domain data for waveform visualization
+				analyser.getFloatTimeDomainData(buf);
 				DrawWaveform();
 
 				// Check if the test duration has elapsed
@@ -335,51 +349,39 @@ function matchNote(pitch, target, matchPid) {
 }
 
 //Function responsible for drawing the waveform
-function DrawWaveform(type, lineWidth, strokeStyle, fillStyle, strokeColor, strokeOpacity) {
-	if (!CANVAS) {
-		console.error("Canvas not available");
-		return;
-	}
+function DrawWaveform() {
+    if (!CANVAS) {
+        console.error("Canvas not available");
+        return;
+    }
 
-	var width = CANVAS.width;
-	var height = CANVAS.height;
+    var width = CANVAS.width;
+    var height = CANVAS.height;
 
-	waveCanvas.clearRect(0, 0, width, height);
-	waveCanvas.lineWidth = lineWidth;
-	waveCanvas.strokeStyle = strokeStyle;
-	waveCanvas.fillStyle = fillStyle;
-	waveCanvas.strokeStyle = strokeColor;
-	waveCanvas.globalAlpha = strokeOpacity;
+    waveCanvas.clearRect(0, 0, width, height);
+    waveCanvas.lineWidth = 2;
+    waveCanvas.strokeStyle = "#000000";  // Black color for visibility
 
-	waveCanvas.beginPath();
+    waveCanvas.beginPath();
 
-	switch (type) {
-		case "wave":
-			for (var i = 0; i < width; i++) {
-				var v = buf[Math.floor(i * buf.length / width)];
-				var y = (0.5 + v * 0.5) * height;
-				if (i == 0) {
-					waveCanvas.moveTo(i, y);
-				} else {
-					waveCanvas.lineTo(i, y);
-				}
-			}
-			break;
-		// ... (other cases)
-	}
+    var barWidth = width / buf.length;
+    for (var i = 0; i < buf.length; i++) {
+        var v = Math.abs(buf[i]); // Use absolute value for positive heights
+        var y = v * height;
+        waveCanvas.rect(i * barWidth, height - y, barWidth, y);
+    }
 
-	waveCanvas.stroke();
-	console.log("Waveform drawn");
+    waveCanvas.stroke();
 }
 
 function getPitchTier(frequency) {
-	if (frequency < 100) {
+	if (frequency < 85) {
 		return "Chad";
-	} else if (frequency < 120) {
+	} else if (frequency < 110) {
 		return "Sigma";
 	} else if (frequency < 140) {
 		return "Normal";
-	} else if (frequency < 160) {
+	} else if (frequency < 175) {
 		return "Gay";
 	} else {
 		return "Very Gay";
