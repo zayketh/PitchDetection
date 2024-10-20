@@ -33,7 +33,8 @@ function toggleRecording() {
 
         testStartTime = Date.now();
         pitchSamples = [];
-        filteredSamples = []; // Reset filtered samples for this recording session
+        filteredSamples = [];
+        rollingBuffer = new Array(150).fill(0);
 
         document.getElementById("frequencyDisplay").innerHTML = '<canvas id="waveform" width="800" height="200"></canvas>';
 
@@ -41,6 +42,9 @@ function toggleRecording() {
         if (CANVAS) {
             waveCanvas = CANVAS.getContext("2d");
         }
+
+        // Start the animation
+        DrawWaveform();
 
         var countdownInterval = setInterval(function () {
             var elapsedTime = Math.floor((Date.now() - testStartTime) / 1000);
@@ -71,7 +75,7 @@ function showResultPopup(result, averagePitch) {
     shareButton.textContent = 'Share on X';
     shareButton.className = 'share-button';
     shareButton.onclick = function () {
-        const tweetText = encodeURIComponent(`My voice test result: ${result} (${Math.round(averagePitch)} Hz) - Test your voice at [Your Website URL]`);
+        const tweetText = encodeURIComponent(`My voice test result: ${result} (${Math.round(averagePitch)} Hz) - Test your voice at solanagaydar.app`);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
     };
     popup.appendChild(shareButton);
@@ -92,6 +96,11 @@ function endRecording() {
     startButton.textContent = "Begin Test";
     document.getElementById("status").textContent = "Test completed";
     document.getElementById("countdown").textContent = "";
+
+    // Stop the animation
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
 
     // Calculate and display the result
     var averagePitch = filteredSamples.length > 0 ? filteredSamples.reduce((a, b) => a + b, 0) / filteredSamples.length : 0;
@@ -136,7 +145,9 @@ navigator.mediaDevices.getUserMedia({
             if (isRecording) {
                 analyser.getFloatTimeDomainData(buf);
                 updatePitch();
-                DrawWaveform();
+
+                // Update rolling buffer with new data
+                updateRollingBuffer(Array.from(buf).map(Math.abs));
 
                 if (Date.now() - testStartTime >= testDuration * 1000) {
                     endRecording();
@@ -225,18 +236,18 @@ function updatePitch(time) {
         document.getElementById("frequencyDisplay").innerText = "Current frequency: " + Math.round(ac) + " Hz";
     }
 }
-var lastDrawTime = 0; // To control the frame rate
+
+// Add these variables at the top of your file
+var rollingBuffer = new Array(150).fill(0);
+var animationFrameId = null;
+
+function updateRollingBuffer(newData) {
+    rollingBuffer.push(...newData);
+    rollingBuffer = rollingBuffer.slice(-150);
+}
 
 function DrawWaveform() {
-    // Limit to 30 FPS (33 milliseconds per frame)
-    var now = performance.now();
-    if (now - lastDrawTime < 33) {
-        return;
-    }
-    lastDrawTime = now;
-
-    if (!CANVAS) {
-        console.error("Canvas not available");
+    if (!CANVAS || !isRecording) {
         return;
     }
 
@@ -249,29 +260,21 @@ function DrawWaveform() {
     // Set properties for the columns
     waveCanvas.fillStyle = "#007BFF"; // Blue color for the columns
 
-    // Adjust the sample rate to smooth out the waveform
-    var sampleRate = Math.floor(buf.length / 150); // Increase sample rate to 150 columns for more detail
-    var columnWidth = width / 150; // Fixed width for 150 columns
+    var columnWidth = width / 150;
 
     for (var i = 0; i < 150; i++) {
-        var sampleIndex = i * sampleRate; // Index in the buffer to sample
-        var v = Math.abs(buf[sampleIndex]); // Absolute value to avoid negative heights
-
-        // Smooth the column height by averaging the current and next sample
-        var nextSampleIndex = (i + 1) * sampleRate < buf.length ? (i + 1) * sampleRate : sampleIndex;
-        var nextV = Math.abs(buf[nextSampleIndex]); // Next data point for smoothing
-
-        // Calculate the average between current and next sample for a smoother transition
-        var smoothedValue = (v + nextV) / 2;
-
+        var value = rollingBuffer[i];
+        
         // Scale amplitude to fit the canvas height
-        var columnHeight = smoothedValue * height;
+        var columnHeight = value * height;
 
         // Draw the columns as rectangles
         waveCanvas.fillRect(i * columnWidth, height - columnHeight, columnWidth, columnHeight);
     }
-}
 
+    // Request next animation frame
+    animationFrameId = requestAnimationFrame(DrawWaveform);
+}
 
 // Function to categorize pitch into tiers
 function getPitchTier(frequency) {
